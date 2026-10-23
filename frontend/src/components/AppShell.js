@@ -1,0 +1,5 @@
+import React from "react";
+import {NavLink,Outlet,useNavigate} from "react-router-dom";
+import Icon from "./Icon";
+const links=[["/home","home","Discover"],["/saved","bookmark","Saved"],["/add","plus","Add"],["/profile","user","Profile"]];
+export default function AppShell(){const navigate=useNavigate();const logout=()=>{localStorage.removeItem("token");navigate("/")};return <div className="app-frame"><header className="topbar"><NavLink className="brand" to="/home"><span className="brand-mark">K</span><span>Kast</span></NavLink><div className="topbar-note">Keep the internet worth keeping.</div><button className="icon-button desktop-only" onClick={logout} aria-label="Log out"><Icon name="logout"/></button></header><main className="app-main"><Outlet/></main><nav className="bottom-nav" aria-label="Main navigation">{links.map(([to,icon,label])=><NavLink key={to} to={to} className={({isActive})=>isActive?"nav-item active":"nav-item"}><span className={icon==="plus"?"add-nav-icon":""}><Icon name={icon}/></span><span>{label}</span></NavLink>)}</nav></div>}

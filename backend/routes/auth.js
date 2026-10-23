@@ -1,12 +1,15 @@
 const express = require("express");
 const router = express.Router();
 const admin = require("../firebase/admin");
-const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const verifyToken = require("../middleware/auth");
 
-const JWT_SECRET = process.env.JWT_SECRET || "supersecretkey";
+const JWT_SECRET = process.env.JWT_SECRET;
+const FIREBASE_WEB_API_KEY = process.env.FIREBASE_WEB_API_KEY;
 
-console.log("JWT_SECRET:", JWT_SECRET);
+if (!JWT_SECRET) {
+  throw new Error("JWT_SECRET is required. See backend/.env.example.");
+}
 
 // REGISTER
 router.post("/register", async (req, res) => {
@@ -25,7 +28,10 @@ router.post("/register", async (req, res) => {
     const link = await admin.auth().generateEmailVerificationLink(email);
     console.log("Verification link:", link);
 
-    res.status(200).json({ message: "User created. Verification email sent." });
+    res.status(200).json({
+      message:
+        "User created. Development verification link was written to the backend console.",
+    });
   } catch (err) {
     console.log("Error creating user:", err);
 
@@ -38,10 +44,28 @@ router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    const userRecord = await admin.auth().getUserByEmail(email);
+    if (!FIREBASE_WEB_API_KEY) {
+      throw new Error("FIREBASE_WEB_API_KEY is required. See backend/.env.example.");
+    }
 
-    const user = await admin.auth().getUser(userRecord.uid);
-    console.log("User record:", user);
+    // Firebase Admin can look users up but cannot verify a password. The
+    // Identity Toolkit REST endpoint performs the actual email/password sign-in.
+    const signInResponse = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_WEB_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, returnSecureToken: true }),
+      }
+    );
+
+    if (!signInResponse.ok) {
+      return res.status(400).json({ error: "Invalid email or password" });
+    }
+
+    const firebaseUser = await signInResponse.json();
+
+    const user = await admin.auth().getUser(firebaseUser.localId);
 
     if (!user.emailVerified) {
       return res.status(403).json({ error: "Email not verified" });
@@ -53,7 +77,7 @@ router.post("/login", async (req, res) => {
 
     res.status(200).json({ token });
   } catch (err) {
-    console.log("Error creating user:", err);
+    console.log("Login error:", err.message);
     res.status(400).json({ error: "Invalid email or password" });
   }
 });
@@ -64,18 +88,4 @@ router.get("/protected", verifyToken, (req, res) => {
 });
 
 // Token verification middleware
-function verifyToken(req, res, next) {
-  const bearer = req.headers.authorization;
-  if (!bearer) return res.status(401).json({ error: "No token provided" });
-
-  const token = bearer.split(" ")[1];
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    return res.status(403).json({ error: "Invalid token" });
-  }
-}
-
 module.exports = router;

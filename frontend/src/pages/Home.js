@@ -1,12 +1,2 @@
-import React from "react";
-import { Typography, Container } from "@mui/material";
-
-const Home = () => {
-  return (
-    <Container maxWidth="sm" sx={{ mt: 10 }}>
-      <Typography variant="h4">Welcome to the Home Page</Typography>
-    </Container>
-  );
-};
-
-export default Home;
+import React,{useEffect,useMemo,useState} from "react";import Icon from "../components/Icon";import StoryCard from "../components/StoryCard";import {getLinks,toggleLike} from "../data";
+export default function Home(){const[items,setItems]=useState([]),[query,setQuery]=useState(""),[loading,setLoading]=useState(true),[error,setError]=useState("");useEffect(()=>{getLinks().then(setItems).catch(e=>setError(e.message)).finally(()=>setLoading(false))},[]);const filtered=useMemo(()=>items.filter(i=>`${i.title} ${i.source} ${i.category}`.toLowerCase().includes(query.toLowerCase())),[items,query]);const toggle=async id=>{try{const result=await toggleLike(id);setItems(all=>all.map(i=>i.id===id?{...i,saved:result.liked,likes:result.likes}:i))}catch(e){setError(e.message)}};return <div className="page-shell"><section className="page-heading"><div><span className="eyebrow">Your circle, curated</span><h1>Worth your time.</h1><p>A quieter feed of things people found and kept.</p></div><div className="search-box"><Icon name="search" size={20}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search your feed" aria-label="Search your feed"/></div></section>{error&&<div className="form-alert page-alert">{error}</div>}<div className="filter-row"><button className="pill active">For you</button><button className="pill">Newest</button><button className="pill">Most liked</button></div>{loading?<div className="loading-state">Gathering the good stuff…</div>:<section className="story-grid">{filtered.map(i=><StoryCard key={i.id} item={i} onSave={toggle}/>)}</section>}{!loading&&!filtered.length&&<div className="empty-state"><span>Nothing here yet.</span><p>Try another search term, or add the first link.</p></div>}</div>}

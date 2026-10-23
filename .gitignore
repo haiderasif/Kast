@@ -1,0 +1,15 @@
+.DS_Store
+
+# Dependencies and build output
+**/node_modules/
+frontend/build/
+
+# Local environment files may contain secrets. Keep the documented examples.
+**/.env
+**/.env.local
+**/.env.*.local
+!**/.env.example
+
+# Firebase Admin private keys
+backend/*firebase-adminsdk*.json
+backend/service-account*.json
